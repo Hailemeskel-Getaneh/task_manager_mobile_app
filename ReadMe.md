@@ -18,10 +18,10 @@ A clean, responsive, and interactive mobile task manager built with **React Nati
 <img src="./assets/no-tasks.png" alt="No tasks" height="400"/>
 
 ### Adding a new task
-<img src="./assets/adding-task.png" alt="Adding task" height="400"/>
+<img src="./assets/completed-tasks-all.png" alt="Adding task" height="400"/>
 
 ### Completed tasks in "All" tab
-<img src="./assets/completed-tasks-all.png" alt="Completed tasks in All tab" height="400"/>
+<img src="./assets/adding-task.png" alt="Completed tasks in All tab" height="400"/>
 
 ### Completed tasks in "Completed" tab
 <img src="./assets/completed-tasks-filter.png" alt="Completed tasks in Completed tab" height="400"/>
