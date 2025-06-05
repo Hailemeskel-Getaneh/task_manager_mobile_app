@@ -56,6 +56,7 @@ export default function App() {
     <View style={styles.container}>
       <Text style={styles.header}>📋 Task Manager</Text>
 
+     
       <View style={styles.inputRow}>
         <TextInput
           value={newTask}
@@ -67,6 +68,7 @@ export default function App() {
           <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
+
 
       <View style={styles.filterRow}>
         {['all', 'completed', 'pending'].map((f) => (
@@ -84,7 +86,6 @@ export default function App() {
           </TouchableOpacity>
         ))}
       </View>
-
 
       <FlatList
         data={filteredTasks}
