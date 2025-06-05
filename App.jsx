@@ -85,6 +85,7 @@ export default function App() {
         ))}
       </View>
 
+
       <FlatList
         data={filteredTasks}
         keyExtractor={(item) => item.id}
