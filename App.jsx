@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+  StyleSheet,
+} from 'react-native';
 import TaskItem from './components/TaskItem';
 import { loadTasks, saveTasks } from './utils/storage';
-import 'react-native-url-polyfill/auto';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
-  const [filter, setFilter] = useState('all'); // 'all', 'completed', 'pending'
+  const [filter, setFilter] = useState('all');
   const [newTask, setNewTask] = useState('');
 
   useEffect(() => {
@@ -23,56 +29,56 @@ export default function App() {
       Alert.alert('Validation', 'Task title cannot be empty!');
       return;
     }
-    setTasks(prev => [
+    setTasks((prev) => [
       { id: Date.now().toString(), title: newTask.trim(), completed: false },
-      ...prev
+      ...prev,
     ]);
     setNewTask('');
   };
 
   const toggleTask = (id) => {
-    setTasks(prev => prev.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
+    );
   };
 
   const deleteTask = (id) => {
-    setTasks(prev => prev.filter(task => task.id !== id));
+    setTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
-  const filteredTasks = tasks.filter(task =>
+  const filteredTasks = tasks.filter((task) =>
     filter === 'all' ? true : filter === 'completed' ? task.completed : !task.completed
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white px-4 py-2">
-      <Text className="text-2xl font-bold mb-4 text-center">📋 Task Manager</Text>
+    <View style={styles.container}>
+      <Text style={styles.header}>📋 Task Manager</Text>
 
-      <View className="flex-row mb-4">
+      <View style={styles.inputRow}>
         <TextInput
           value={newTask}
           onChangeText={setNewTask}
           placeholder="Add a new task..."
-          className="flex-1 border border-gray-300 rounded-l px-3 py-2"
+          style={styles.input}
         />
-        <TouchableOpacity
-          onPress={addTask}
-          className="bg-blue-500 px-4 justify-center rounded-r"
-        >
-          <Text className="text-white font-bold">Add</Text>
+        <TouchableOpacity onPress={addTask} style={styles.addButton}>
+          <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
 
-      <View className="flex-row justify-around mb-4">
-        {['all', 'completed', 'pending'].map(f => (
+      <View style={styles.filterRow}>
+        {['all', 'completed', 'pending'].map((f) => (
           <TouchableOpacity
             key={f}
             onPress={() => setFilter(f)}
-            className={`px-4 py-2 rounded ${
-              filter === f ? 'bg-blue-500' : 'bg-gray-200'
-            }`}
+            style={[
+              styles.filterButton,
+              filter === f ? styles.filterActive : styles.filterInactive,
+            ]}
           >
-            <Text className={filter === f ? 'text-white font-bold' : 'text-black'}>
+            <Text style={filter === f ? styles.filterTextActive : styles.filterTextInactive}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </Text>
           </TouchableOpacity>
@@ -81,14 +87,81 @@ export default function App() {
 
       <FlatList
         data={filteredTasks}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TaskItem task={item} onToggle={toggleTask} onDelete={deleteTask} />
         )}
         ListEmptyComponent={
-          <Text className="text-gray-500 text-center mt-10">No tasks to show.</Text>
+          <Text style={styles.emptyText}>No tasks to show.</Text>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 80,
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  input: {
+    flex: 1,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopLeftRadius: 6,
+    borderBottomLeftRadius: 6,
+  },
+  addButton: {
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  filterButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  filterActive: {
+    backgroundColor: '#3B82F6',
+  },
+  filterInactive: {
+    backgroundColor: '#E5E7EB',
+  },
+  filterTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  filterTextInactive: {
+    color: '#000',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    marginTop: 40,
+  },
+});
