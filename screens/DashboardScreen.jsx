@@ -7,14 +7,19 @@ import { useSettings } from '../utils/SettingsContext';
 import { lightTheme, darkTheme } from '../utils/theme';
 import SettingsModal from '../components/SettingsModal';
 import DatePicker from '../components/DatePicker';
+import SearchModal from '../components/SearchModal';
+import { popHaptic } from '../utils/notifications';
+import { Search } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
 export default function DashboardScreen({ navigation }) {
   const [data, setData] = useState({ days: {} });
   const [globalProgress, setGlobalProgress] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [isSettingsVisible, setSettingsVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isSearchVisible, setSearchVisible] = useState(false);
   
   const { activeTheme, userName } = useSettings();
   const theme = activeTheme === 'dark' ? darkTheme : lightTheme;
@@ -30,6 +35,31 @@ export default function DashboardScreen({ navigation }) {
     const loadedData = await loadAllData();
     setData(loadedData);
     setGlobalProgress(getGlobalProgress(loadedData));
+    calculateStreak(loadedData);
+  };
+
+  const calculateStreak = (loadedData) => {
+    let currentStreak = 0;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    let dateToCheck = new Date();
+
+    while (true) {
+      const dateStr = format(dateToCheck, 'yyyy-MM-dd');
+      const dayData = loadedData.days[dateStr];
+      if (!dayData || dayData.tasks.length === 0) break;
+
+      const progress = dayData.tasks.reduce((acc, t) => acc + (t.progress || 0), 0) / dayData.tasks.length;
+      if (progress >= 1) {
+        currentStreak++;
+        dateToCheck.setDate(dateToCheck.getDate() - 1);
+      } else if (dateStr === todayStr) {
+        // Don't break if today is not 100% yet, check yesterday
+        dateToCheck.setDate(dateToCheck.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    setStreak(currentStreak);
   };
 
   const weekStart = startOfWeek(new Date());
@@ -44,6 +74,7 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const onDateSelected = (selectedDate) => {
+    popHaptic();
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     navigation.navigate('DayDetail', { date: dateStr });
   };
@@ -61,9 +92,20 @@ export default function DashboardScreen({ navigation }) {
           </View>
           <Text style={{ color: theme.text, fontSize: 32, fontWeight: 'bold' }}>Hey, {userName}! 👋</Text>
         </View>
-        <TouchableOpacity onPress={() => setSettingsVisible(true)} style={{ padding: 8, backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.border }}>
-          <Settings size={24} color={theme.textSecondary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity 
+            onPress={() => { popHaptic(); setSearchVisible(true); }} 
+            style={{ padding: 8, backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.border }}
+          >
+            <Search size={22} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => { popHaptic(); setSettingsVisible(true); }} 
+            style={{ padding: 8, backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.border }}
+          >
+            <Settings size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={{
@@ -85,7 +127,10 @@ export default function DashboardScreen({ navigation }) {
             <Text style={{ color: theme.text, fontSize: 48, fontWeight: '900' }}>
               {(globalProgress * 100).toFixed(0)}<Text style={{ color: theme.primary, fontSize: 24 }}>%</Text>
             </Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4, fontWeight: '500' }}>Consistency is key!</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: '500' }}>{streak} Day Streak</Text>
+              <View style={{ backgroundColor: theme.success, width: 4, height: 4, borderRadius: 2, marginLeft: 6 }} />
+            </View>
           </View>
           
           <View style={{ height: 8, width: 100, backgroundColor: theme.border, borderRadius: 99, overflow: 'hidden' }}>
@@ -98,7 +143,7 @@ export default function DashboardScreen({ navigation }) {
       <View style={{ marginBottom: 32 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ color: theme.text, fontSize: 18, fontWeight: '600' }}>Weekly Journey</Text>
-          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ padding: 4 }}>
+          <TouchableOpacity onPress={() => { popHaptic(); setShowDatePicker(true); }} style={{ padding: 4 }}>
             <Calendar size={18} color={theme.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -111,7 +156,7 @@ export default function DashboardScreen({ navigation }) {
             return (
               <TouchableOpacity
                 key={idx}
-                onPress={() => navigation.navigate('DayDetail', { date: dateStr })}
+                onPress={() => { popHaptic(); navigation.navigate('DayDetail', { date: dateStr }); }}
                 style={{
                   marginRight: 16,
                   alignItems: 'center',
@@ -144,7 +189,7 @@ export default function DashboardScreen({ navigation }) {
 
       {/* Today's Quick Action */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('DayDetail', { date: format(new Date(), 'yyyy-MM-dd') })}
+        onPress={() => { popHaptic(); navigation.navigate('DayDetail', { date: format(new Date(), 'yyyy-MM-dd') }); }}
         style={{
           marginTop: 'auto',
           backgroundColor: theme.primary,
@@ -166,6 +211,13 @@ export default function DashboardScreen({ navigation }) {
         visible={showDatePicker}
         onSelect={onDateSelected}
         onClose={() => setShowDatePicker(false)}
+      />
+
+      <SearchModal
+        visible={isSearchVisible}
+        data={data}
+        onClose={() => setSearchVisible(false)}
+        onNavigate={(date) => navigation.navigate('DayDetail', { date })}
       />
     </View>
   );

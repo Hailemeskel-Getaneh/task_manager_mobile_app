@@ -98,4 +98,11 @@ const getSnoozeTime = (timeStr, minutesToAdd) => {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
 
+/**
+ * Tiny 15ms vibration for "Haptic" button feel.
+ */
+export const popHaptic = () => {
+  Vibration.vibrate(15);
+};
+
 export const requestPermissions = async () => true;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
-import { ChevronLeft, Plus, Clock, Trash2, AlertTriangle, Bell } from 'lucide-react-native';
+import { ChevronLeft, Plus, Clock, Trash2, AlertTriangle, Bell, Briefcase, User, Heart, BookOpen } from 'lucide-react-native';
 import { format, parseISO } from 'date-fns';
 import { loadAllData, saveAllData } from '../utils/storage';
-import { scheduleAlarm, cancelAlarm } from '../utils/notifications';
+import { scheduleAlarm, cancelAlarm, popHaptic } from '../utils/notifications';
 import { useSettings } from '../utils/SettingsContext';
 import { lightTheme, darkTheme } from '../utils/theme';
 import TaskEditorModal from '../components/TaskEditorModal';
@@ -60,6 +60,16 @@ const RenderNotes = ({ content, font, theme }) => {
   );
 };
 
+const CategoryIcon = ({ category, size = 12, color = 'white' }) => {
+  switch (category) {
+    case 'Work':     return <Briefcase size={size} color={color} />;
+    case 'Personal': return <User size={size} color={color} />;
+    case 'Health':   return <Heart size={size} color={color} />;
+    case 'Study':    return <BookOpen size={size} color={color} />;
+    default:         return null;
+  }
+};
+
 export default function DayDetailScreen({ route, navigation }) {
   const { date } = route.params;
   const [data, setData] = useState({ days: {} });
@@ -103,6 +113,7 @@ export default function DayDetailScreen({ route, navigation }) {
 
     await saveAllData(newData);
     setData(newData);
+    popHaptic();
 
     // Handle Alarms (Start & End)
     const alarmId = task.id;
@@ -129,6 +140,7 @@ export default function DayDetailScreen({ route, navigation }) {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
+          popHaptic();
           cancelAlarm(`alarm_${task.id}_Start`);
           cancelAlarm(`alarm_${task.id}_End`);
           const updatedDays = { ...data.days };
@@ -142,11 +154,13 @@ export default function DayDetailScreen({ route, navigation }) {
   };
 
   const openEdit = (task) => {
+    popHaptic();
     setEditingTask(task);
     setModalVisible(true);
   };
 
   const openNew = () => {
+    popHaptic();
     setEditingTask(null);
     setModalVisible(true);
   };
@@ -161,7 +175,7 @@ export default function DayDetailScreen({ route, navigation }) {
       {/* Header */}
       <View style={{ paddingHorizontal: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => { popHaptic(); navigation.goBack(); }}
           style={{ backgroundColor: theme.card, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: theme.border }}
         >
           <ChevronLeft size={20} color={theme.text} />
@@ -269,6 +283,14 @@ export default function DayDetailScreen({ route, navigation }) {
                     {item.alertEnabled && (
                       <View style={{ backgroundColor: 'rgba(56,189,248,0.2)', padding: 4, borderRadius: 6 }}>
                         <Bell size={10} color="#38bdf8" />
+                      </View>
+                    )}
+
+                    {/* Category indicator */}
+                    {item.category && (
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                        <CategoryIcon category={item.category} size={10} color={cardSubColor} />
+                        <Text style={{ color: cardSubColor, fontSize: 9, fontWeight: '800', marginLeft: 4, textTransform: 'uppercase' }}>{item.category}</Text>
                       </View>
                     )}
                   </View>

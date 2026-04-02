@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Platform } from 'react-native';
-import { X, Clock, Bold, Italic, List, Table as TableIcon, Bell, BellRing } from 'lucide-react-native';
+import { X, Clock, Bold, Italic, List, Table as TableIcon, Bell, BellRing, Briefcase, User, Heart, BookOpen } from 'lucide-react-native';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { useSettings } from '../utils/SettingsContext';
 import TimePicker from './TimePicker';
 import ProgressSlider from './ProgressSlider';
+import { popHaptic } from '../utils/notifications';
+
+const CATEGORIES = [
+  { name: 'Work', icon: Briefcase },
+  { name: 'Personal', icon: User },
+  { name: 'Health', icon: Heart },
+  { name: 'Study', icon: BookOpen },
+];
 
 const PRESETS = [
   '#1e293b', // Slate (Default)
@@ -35,6 +43,7 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
   const [startDate, setStartDate] = useState(parseTime('09:00'));
   const [endDate, setEndDate] = useState(parseTime('10:00'));
   const [priority, setPriority] = useState('Medium');
+  const [category, setCategory] = useState(null);
   const [progress, setProgress] = useState(0);
   const [alertEnabled, setAlertEnabled] = useState(false);
   const [endAlertEnabled, setEndAlertEnabled] = useState(false);
@@ -53,6 +62,7 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
       setStartDate(parseTime(initialTask?.startTime || '09:00'));
       setEndDate(parseTime(initialTask?.endTime || '10:00'));
       setPriority(initialTask?.priority || 'Medium');
+      setCategory(initialTask?.category || null);
       setProgress(initialTask ? Math.round((initialTask.progress || 0) * 100) : 0);
       setAlertEnabled(initialTask?.alertEnabled || false);
       setEndAlertEnabled(initialTask?.endAlertEnabled || false);
@@ -83,8 +93,9 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
       id: initialTask?.id || Date.now().toString(),
       title,
       startTime: to24h(startDate),
-      endTime: to24h(endDate),
+      endTime: formatTime(endDate),
       priority,
+      category,
       progress: progress / 100,
       alertEnabled,
       endAlertEnabled,
@@ -115,18 +126,16 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
           shadowOpacity: 0.5,
           shadowRadius: 20,
         }}>
-          {/* Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold' }}>
-              {initialTask ? 'Edit Focus' : 'New Focus'}
+              {initialTask ? 'Refine Goal' : 'New Priority'}
             </Text>
-            <TouchableOpacity onPress={onClose} style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: 8, borderRadius: 99 }}>
-              <X size={20} color="white" />
+            <TouchableOpacity onPress={() => { popHaptic(); onClose(); }} style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: 10, borderRadius: 16 }}>
+              <X size={22} color="white" />
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Task Title & Font Picker */}
             <View style={{ marginBottom: 24 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textTransform: 'uppercase', fontWeight: 'bold' }}>Task Name</Text>
@@ -134,7 +143,7 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
                   {FONTS.map(f => (
                     <TouchableOpacity 
                       key={f.value}
-                      onPress={() => setFont(f.value)}
+                      onPress={() => { popHaptic(); setFont(f.value); }}
                       style={{
                         paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, borderWidth: 1,
                         backgroundColor: font === f.value ? 'white' : 'transparent',
@@ -158,18 +167,45 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
               />
             </View>
 
-            {/* Priority Selector */}
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 12 }}>Priority Level</Text>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ marginBottom: 32 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 16, marginLeft: 4 }}>CATEGORY TAG</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {CATEGORIES.map(cat => (
+                  <TouchableOpacity
+                    key={cat.name}
+                    onPress={() => { popHaptic(); setCategory(cat.name === category ? null : cat.name); }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: category === cat.name ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.2)',
+                      padding: 12,
+                      borderRadius: 16,
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: category === cat.name ? 'rgba(255,255,255,0.3)' : 'transparent',
+                    }}
+                  >
+                    <cat.icon size={20} color={category === cat.name ? 'white' : 'rgba(255,255,255,0.4)'} />
+                    <Text style={{ color: category === cat.name ? 'white' : 'rgba(255,255,255,0.4)', fontSize: 8, fontWeight: 'bold', marginTop: 6, textTransform: 'uppercase' }}>{cat.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={{ marginBottom: 32 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 16, marginLeft: 4 }}>PRIORITY LEVEL</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
                  {['Low', 'Medium', 'High'].map(p => (
                    <TouchableOpacity
                      key={p}
-                     onPress={() => setPriority(p)}
+                     onPress={() => { popHaptic(); setPriority(p); }}
                      style={{
-                       flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1,
-                       backgroundColor: priority === p ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                       borderColor: priority === p ? 'white' : 'transparent'
+                       flex: 1,
+                       backgroundColor: priority === p ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.2)',
+                       paddingVertical: 12,
+                       borderRadius: 16,
+                       alignItems: 'center',
+                       borderWidth: 1,
+                       borderColor: priority === p ? 'rgba(255,255,255,0.3)' : 'transparent',
                      }}
                    >
                      <Text style={{ color: priority === p ? 'white' : 'rgba(255,255,255,0.5)', fontWeight: 'bold' }}>{p}</Text>
@@ -178,14 +214,13 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
               </View>
             </View>
 
-            {/* Color Palette */}
             <View style={{ marginBottom: 24 }}>
                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 12, textTransform: 'uppercase', fontWeight: 'bold', paddingHorizontal: 4 }}>Theme Color</Text>
                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
                  {PRESETS.map(c => (
                    <TouchableOpacity 
                      key={c}
-                     onPress={() => setColor(c)}
+                     onPress={() => { popHaptic(); setColor(c); }}
                      style={{
                        width: 40, height: 40, borderRadius: 99, borderWidth: 2,
                        backgroundColor: c,
@@ -196,15 +231,14 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
                </ScrollView>
             </View>
 
-            {/* Notes & Toolbar */}
             <View style={{ marginBottom: 24 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textTransform: 'uppercase', fontWeight: 'bold' }}>Notes & Specs</Text>
                 <View style={{ flexDirection: 'row', gap: 16, backgroundColor: 'rgba(0,0,0,0.2)', padding: 8, borderRadius: 12 }}>
-                  <TouchableOpacity onPress={() => insertTag('**BOLD**')}><Bold size={16} color="white" /></TouchableOpacity>
-                  <TouchableOpacity onPress={() => insertTag('_ITALIC_')}><Italic size={16} color="white" /></TouchableOpacity>
-                  <TouchableOpacity onPress={() => insertTag('- ')}><List size={16} color="white" /></TouchableOpacity>
-                  <TouchableOpacity onPress={() => setNotes(prev => prev + '\n| Col | Col | \n|---|---| \n| val | val |')}><TableIcon size={16} color="white" /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { popHaptic(); insertTag('**BOLD**'); }}><Bold size={16} color="white" /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { popHaptic(); insertTag('_ITALIC_'); }}><Italic size={16} color="white" /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { popHaptic(); insertTag('- '); }}><List size={16} color="white" /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { popHaptic(); setNotes(prev => prev + '\n| Col | Col | \n|---|---| \n| val | val |'); }}><TableIcon size={16} color="white" /></TouchableOpacity>
                 </View>
               </View>
               <TextInput
@@ -221,34 +255,24 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
               />
             </View>
 
-            {/* Time & Alarm (Compact) */}
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24, alignItems: 'center' }}>
-              {/* Start Time */}
               <TouchableOpacity
-                onPress={() => setShowStartPicker(true)}
-                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 16 }}
+                onPress={() => { popHaptic(); setShowStartPicker(true); }}
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: theme.primary }}
               >
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginBottom: 4, fontWeight: 'bold', textTransform: 'uppercase' }}>Start</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Clock size={14} color="white" />
-                  <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>{formatTime(startDate)}</Text>
-                </View>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '800', marginBottom: 4 }}>START</Text>
+                <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>{formatTime(startDate)}</Text>
               </TouchableOpacity>
-              {/* End Time */}
               <TouchableOpacity
-                onPress={() => setShowEndPicker(true)}
-                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 16 }}
+                onPress={() => { popHaptic(); setShowEndPicker(true); }}
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#ef4444' }}
               >
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginBottom: 4, fontWeight: 'bold', textTransform: 'uppercase' }}>End</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Clock size={14} color="white" />
-                  <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>{formatTime(endDate)}</Text>
-                </View>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '800', marginBottom: 4 }}>END</Text>
+                <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>{formatTime(endDate)}</Text>
               </TouchableOpacity>
-              {/* Alarm Bells */}
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity
-                  onPress={() => setAlertEnabled(!alertEnabled)}
+                  onPress={() => { popHaptic(); setAlertEnabled(!alertEnabled); }}
                   style={{
                     padding: 16,
                     borderRadius: 16,
@@ -265,7 +289,7 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setEndAlertEnabled(!endAlertEnabled)}
+                  onPress={() => { popHaptic(); setEndAlertEnabled(!endAlertEnabled); }}
                   style={{
                     padding: 16,
                     borderRadius: 16,
@@ -284,24 +308,6 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
               </View>
             </View>
 
-            {showStartPicker && (
-              <TimePicker
-                visible={showStartPicker}
-                value={startDate}
-                onChange={(selected) => setStartDate(selected)}
-                onClose={() => setShowStartPicker(false)}
-              />
-            )}
-            {showEndPicker && (
-              <TimePicker
-                visible={showEndPicker}
-                value={endDate}
-                onChange={(selected) => setEndDate(selected)}
-                onClose={() => setShowEndPicker(false)}
-              />
-            )}
-
-            {/* Progress Selector */}
             <ProgressSlider 
               value={progress} 
               onChange={setProgress} 
