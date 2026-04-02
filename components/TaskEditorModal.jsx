@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Platform } from 'react-native';
-import { X, Clock, Bold, Italic, List, Table as TableIcon, Bell } from 'lucide-react-native';
+import { X, Clock, Bold, Italic, List, Table as TableIcon, Bell, BellRing } from 'lucide-react-native';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { useSettings } from '../utils/SettingsContext';
 import TimePicker from './TimePicker';
+import ProgressSlider from './ProgressSlider';
 
 const PRESETS = [
   '#1e293b', // Slate (Default)
@@ -36,6 +37,8 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
   const [priority, setPriority] = useState('Medium');
   const [progress, setProgress] = useState(0);
   const [alertEnabled, setAlertEnabled] = useState(false);
+  const [endAlertEnabled, setEndAlertEnabled] = useState(false);
+  
   const [notes, setNotes] = useState('');
   const [color, setColor] = useState(PRESETS[0]);
   const [font, setFont] = useState('System');
@@ -52,6 +55,7 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
       setPriority(initialTask?.priority || 'Medium');
       setProgress(initialTask ? Math.round((initialTask.progress || 0) * 100) : 0);
       setAlertEnabled(initialTask?.alertEnabled || false);
+      setEndAlertEnabled(initialTask?.endAlertEnabled || false);
       setNotes(initialTask?.notes || '');
       setColor(initialTask?.color || PRESETS[0]);
       setFont(initialTask?.font || 'System');
@@ -83,6 +87,7 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
       priority,
       progress: progress / 100,
       alertEnabled,
+      endAlertEnabled,
       notes,
       color,
       font,
@@ -234,21 +239,43 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
                   <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>{formatTime(endDate)}</Text>
                 </View>
               </TouchableOpacity>
-              {/* Alarm Bell */}
-              <TouchableOpacity
-                onPress={() => setAlertEnabled(!alertEnabled)}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  backgroundColor: alertEnabled ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.2)',
-                  borderColor: alertEnabled ? '#38bdf8' : 'transparent',
-                  borderWidth: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Bell size={24} color={alertEnabled ? '#38bdf8' : 'rgba(255,255,255,0.4)'} />
-              </TouchableOpacity>
+              {/* Alarm Bells */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => setAlertEnabled(!alertEnabled)}
+                  style={{
+                    padding: 16,
+                    borderRadius: 16,
+                    backgroundColor: alertEnabled ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.2)',
+                    borderColor: alertEnabled ? '#38bdf8' : 'transparent',
+                    borderWidth: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View style={{ alignItems: 'center' }}>
+                    <Bell size={24} color={alertEnabled ? '#38bdf8' : 'rgba(255,255,255,0.4)'} />
+                    <Text style={{ color: alertEnabled ? '#38bdf8' : 'rgba(255,255,255,0.4)', fontSize: 7, fontWeight: 'bold', marginTop: 2 }}>START</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setEndAlertEnabled(!endAlertEnabled)}
+                  style={{
+                    padding: 16,
+                    borderRadius: 16,
+                    backgroundColor: endAlertEnabled ? 'rgba(239,68,68,0.2)' : 'rgba(0,0,0,0.2)',
+                    borderColor: endAlertEnabled ? '#ef4444' : 'transparent',
+                    borderWidth: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View style={{ alignItems: 'center' }}>
+                    <BellRing size={24} color={endAlertEnabled ? '#ef4444' : 'rgba(255,255,255,0.4)'} />
+                    <Text style={{ color: endAlertEnabled ? '#ef4444' : 'rgba(255,255,255,0.4)', fontSize: 7, fontWeight: 'bold', marginTop: 2 }}>END</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {showStartPicker && (
@@ -269,24 +296,11 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
             )}
 
             {/* Progress Selector */}
-            <View style={{ marginBottom: 32, backgroundColor: 'rgba(0,0,0,0.2)', padding: 20, borderRadius: 16 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' }}>Progress Accuracy</Text>
-                  <Text style={{ color: 'white', fontWeight: 'bold' }}>{progress}%</Text>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 4 }}>
-                  {[0, 25, 50, 75, 100].map(val => (
-                    <TouchableOpacity 
-                      key={val}
-                      onPress={() => setProgress(val)}
-                      style={{
-                        flex: 1, height: 8, borderRadius: 99,
-                        backgroundColor: progress >= val ? theme.primary : 'rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  ))}
-                </View>
-            </View>
+            <ProgressSlider 
+              value={progress} 
+              onChange={setProgress} 
+              theme={theme} 
+            />
 
             {/* Save Action */}
             <TouchableOpacity 

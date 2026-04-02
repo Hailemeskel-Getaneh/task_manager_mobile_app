@@ -24,15 +24,25 @@ export default function TimePicker({ visible, value, onChange, onClose }) {
     onClose();
   };
 
-  const Step = ({ label, onInc, onDec, display }) => (
+  const Step = ({ label, onInc, onDec, onLongInc, onLongDec, display }) => (
     <View style={{ alignItems: 'center', minWidth: 64 }}>
-      <TouchableOpacity onPress={onInc} style={{ padding: 12 }}>
+      <TouchableOpacity 
+        onPress={onInc} 
+        onLongPress={onLongInc}
+        delayLongPress={300}
+        style={{ padding: 12 }}
+      >
         <ChevronUp size={28} color="white" />
       </TouchableOpacity>
       <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', minWidth: 56, textAlign: 'center' }}>
         {display}
       </Text>
-      <TouchableOpacity onPress={onDec} style={{ padding: 12 }}>
+      <TouchableOpacity 
+        onPress={onDec} 
+        onLongPress={onLongDec}
+        delayLongPress={300}
+        style={{ padding: 12 }}
+      >
         <ChevronDown size={28} color="white" />
       </TouchableOpacity>
       <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', marginTop: 4 }}>
@@ -55,13 +65,17 @@ export default function TimePicker({ visible, value, onChange, onClose }) {
               display={String(hour).padStart(2, '0')}
               onInc={() => setHour(h => h >= 12 ? 1 : h + 1)}
               onDec={() => setHour(h => h <= 1 ? 12 : h - 1)}
+              onLongInc={() => setHour(h => (h + 2 > 12 ? (h + 2 - 12) : h + 2))}
+              onLongDec={() => setHour(h => (h - 2 < 1 ? (12 + (h - 2)) : h - 2))}
             />
             <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', marginBottom: 28 }}>:</Text>
             <Step
               label="Min"
               display={String(minute).padStart(2, '0')}
-              onInc={() => setMinute(m => m >= 59 ? 0 : m + 5 - (m % 5 === 0 ? 0 : m % 5) + (m % 5 === 0 ? 5 : 0))}
-              onDec={() => setMinute(m => m <= 0 ? 55 : m - (m % 5 === 0 ? 5 : m % 5))}
+              onInc={() => setMinute(m => (m >= 59 ? 0 : m + 1))}
+              onDec={() => setMinute(m => (m <= 0 ? 59 : m - 1))}
+              onLongInc={() => setMinute(m => ((m + 15) % 60))}
+              onLongDec={() => setMinute(m => (m - 15 < 0 ? (60 + (m - 15)) : m - 15))}
             />
             <View style={{ marginBottom: 28, marginLeft: 8 }}>
               <TouchableOpacity

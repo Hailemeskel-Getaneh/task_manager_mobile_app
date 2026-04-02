@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { X, Moon, Sun, Monitor, User } from 'lucide-react-native';
 import { useSettings } from '../utils/SettingsContext';
@@ -8,6 +8,13 @@ export default function SettingsModal({ visible, onClose }) {
   const { themeMode, changeTheme, activeTheme, userName, changeName } = useSettings();
   const theme = activeTheme === 'dark' ? darkTheme : lightTheme;
   const [nameInput, setNameInput] = useState(userName);
+
+  // Sync internal input state when modal opens to ensure we have the latest name from storage
+  useEffect(() => {
+    if (visible) {
+      setNameInput(userName);
+    }
+  }, [visible, userName]);
 
   const handleClose = () => {
     if (nameInput.trim()) changeName(nameInput.trim());

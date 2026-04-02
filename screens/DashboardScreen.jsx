@@ -55,7 +55,7 @@ export default function DashboardScreen({ navigation }) {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <View style={{ backgroundColor: theme.primaryLight, padding: 8, borderRadius: 12 }}>
-              <LayoutDashboard size={20} color={theme.primary} />
+              <LayoutDashboard size={21} color={theme.primary} />
             </View>
             <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '800', marginLeft: 12, letterSpacing: 2, textTransform: 'uppercase' }}>OVERVIEW</Text>
           </View>
@@ -127,8 +127,11 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={{ color: isToday ? theme.primary : theme.textSecondary, fontSize: 12, marginBottom: 8, textTransform: 'uppercase', fontWeight: '700' }}>
                   {format(date, 'EEE')}
                 </Text>
-                <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold', marginBottom: 16 }}>
+                <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold', marginBottom: 4 }}>
                   {format(date, 'd')}
+                </Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 8, fontWeight: '700', marginBottom: 6 }}>
+                  {Math.round(progress * 100)}%
                 </Text>
                 <View style={{ width: 6, height: 48, backgroundColor: theme.border, borderRadius: 99, justifyContent: 'flex-end', overflow: 'hidden' }}>
                   <View style={{ backgroundColor: theme.primary, borderRadius: 99, height: `${progress * 100}%` }} />

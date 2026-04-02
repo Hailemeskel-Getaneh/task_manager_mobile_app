@@ -104,10 +104,18 @@ export default function DayDetailScreen({ route, navigation }) {
     await saveAllData(newData);
     setData(newData);
 
+    // Handle Alarms (Start & End)
+    const alarmId = task.id;
     if (task.alertEnabled) {
-      scheduleAlarm(task.title, task.startTime, date);
+      scheduleAlarm(alarmId, task.title, task.startTime, date, 'Start');
     } else {
-      cancelAlarm(task.title);
+      cancelAlarm(`alarm_${alarmId}_Start`);
+    }
+
+    if (task.endAlertEnabled && task.endTime) {
+      scheduleAlarm(alarmId, task.title, task.endTime, date, 'End');
+    } else {
+      cancelAlarm(`alarm_${alarmId}_End`);
     }
 
     setModalVisible(false);
@@ -121,11 +129,13 @@ export default function DayDetailScreen({ route, navigation }) {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          cancelAlarm(task.title);
+          cancelAlarm(`alarm_${task.id}_Start`);
+          cancelAlarm(`alarm_${task.id}_End`);
           const updatedDays = { ...data.days };
           updatedDays[date].tasks = updatedDays[date].tasks.filter(t => t.id !== task.id);
-          await saveAllData({ ...data, days: updatedDays });
-          setData(d => ({ ...d, days: updatedDays }));
+          const newData = { ...data, days: updatedDays };
+          await saveAllData(newData);
+          setData(newData);
         }
       }
     ]);
