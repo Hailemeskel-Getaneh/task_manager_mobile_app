@@ -7,6 +7,7 @@ import DashboardScreen from './screens/DashboardScreen';
 import DayDetailScreen from './screens/DayDetailScreen';
 import { requestPermissions } from './utils/notifications';
 import { SettingsProvider, useSettings } from './utils/SettingsContext';
+import SecurityModal from './components/SecurityModal';
 
 const Stack = createStackNavigator();
 
@@ -33,11 +34,23 @@ const customLightTheme = {
 };
 
 function AppNavigation() {
-  const { activeTheme } = useSettings();
+  const { activeTheme, isSecurityEnabled } = useSettings();
+  const [isUnlocked, setIsUnlocked] = React.useState(false);
   
   useEffect(() => {
     requestPermissions();
   }, []);
+
+  // Show lock screen if security is enabled and user hasn't unlocked yet this session
+  if (isSecurityEnabled && !isUnlocked) {
+    return (
+      <SecurityModal 
+        visible={true} 
+        mode="unlock" 
+        onUnlock={() => setIsUnlocked(true)} 
+      />
+    );
+  }
 
   return (
     <NavigationContainer theme={activeTheme === 'dark' ? customDarkTheme : customLightTheme}>

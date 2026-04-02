@@ -13,7 +13,7 @@ export const lightTheme = {
 
 export const darkTheme = {
   background: '#0f172a', // slate-900
-  card: 'rgba(30,41,59,0.6)', // slate-800
+  card: 'rgba(30,41,59,0.95)', // slate-800
   text: '#f8fafc', // slate-50
   textSecondary: '#94a3b8', // slate-400
   border: 'rgba(255,255,255,0.05)',

@@ -101,14 +101,20 @@ export default function TaskEditorModal({ visible, onClose, onSave, initialTask 
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-        <View 
-          style={{ 
-            backgroundColor: color || theme.card, 
-            borderTopLeftRadius: 40, borderTopRightRadius: 40, 
-            padding: 32, maxHeight: '95%' 
-          }}
-        >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' }}>
+        <View style={{ 
+          backgroundColor: theme.card, 
+          borderTopLeftRadius: 32, 
+          borderTopRightRadius: 32, 
+          padding: 24, 
+          maxHeight: '90%',
+          borderWidth: 1,
+          borderColor: theme.border,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -10 },
+          shadowOpacity: 0.5,
+          shadowRadius: 20,
+        }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold' }}>
