@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, Platform, Vibration } from 'react-native';
 import { ChevronLeft, Plus, Clock, Trash2, AlertTriangle, Bell, Briefcase, User, Heart, BookOpen } from 'lucide-react-native';
 import { format, parseISO } from 'date-fns';
 import { loadAllData, saveAllData } from '../utils/storage';

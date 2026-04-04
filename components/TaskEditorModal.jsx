@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Platform, Vibration } from 'react-native';
 import { X, Clock, Bold, Italic, List, Table as TableIcon, Bell, BellRing, Briefcase, User, Heart, BookOpen } from 'lucide-react-native';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { useSettings } from '../utils/SettingsContext';

@@ -20,7 +20,10 @@ export default function TimePicker({ visible, value, onChange, onClose }) {
     let h = hour % 12;
     if (ampm === 'PM') h += 12;
     d.setHours(h, minute, 0, 0);
-    onChange(d);
+    
+    if (typeof onChange === 'function') {
+      onChange(d);
+    }
     onClose();
   };
 
