@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { LayoutDashboard, Calendar, Plus, Settings } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions, Modal } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LayoutDashboard, Calendar, Plus, Settings, Search, Sparkles, Flame } from 'lucide-react-native';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { loadAllData, getGlobalProgress } from '../utils/storage';
 import { useSettings } from '../utils/SettingsContext';
@@ -8,8 +9,8 @@ import { lightTheme, darkTheme } from '../utils/theme';
 import SettingsModal from '../components/SettingsModal';
 import DatePicker from '../components/DatePicker';
 import SearchModal from '../components/SearchModal';
-import { popHaptic } from '../utils/notifications';
-import { Search } from 'lucide-react-native';
+import { popHaptic, initNotifications } from '../utils/notifications';
+import { toEthiopian, formatDate } from '../utils/ethiopianCalendar';
 
 const { width } = Dimensions.get('window');
 
@@ -20,16 +21,31 @@ export default function DashboardScreen({ navigation }) {
   const [isSettingsVisible, setSettingsVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSearchVisible, setSearchVisible] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
   
-  const { activeTheme, userName } = useSettings();
+  const { activeTheme, userName, calendarMode } = useSettings();
   const theme = activeTheme === 'dark' ? darkTheme : lightTheme;
+  const isEth = calendarMode === 'Ethiopian';
 
   useEffect(() => {
+    checkGreeting();
+    initNotifications();
     const unsubscribe = navigation.addListener('focus', () => {
       refreshData();
     });
     return unsubscribe;
   }, [navigation]);
+
+  const checkGreeting = async () => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const last = await AsyncStorage.getItem('@last_greeting');
+      if (last !== today) {
+        setShowGreeting(true);
+        await AsyncStorage.setItem('@last_greeting', today);
+      }
+    } catch (e) {}
+  };
 
   const refreshData = async () => {
     const loadedData = await loadAllData();
@@ -46,14 +62,17 @@ export default function DashboardScreen({ navigation }) {
     while (true) {
       const dateStr = format(dateToCheck, 'yyyy-MM-dd');
       const dayData = loadedData.days[dateStr];
+      
+      // If no tasks exist for this day (and it's not today with tasks about to be added), break
       if (!dayData || dayData.tasks.length === 0) break;
 
       const progress = dayData.tasks.reduce((acc, t) => acc + (t.progress || 0), 0) / dayData.tasks.length;
-      if (progress >= 1) {
+      
+      // Streak counts if:
+      // 1. It's today and tasks exist (reward starting the day)
+      // 2. It's a past day and some work (>0%) was done
+      if (progress > 0 || dateStr === todayStr) {
         currentStreak++;
-        dateToCheck.setDate(dateToCheck.getDate() - 1);
-      } else if (dateStr === todayStr) {
-        // Don't break if today is not 100% yet, check yesterday
         dateToCheck.setDate(dateToCheck.getDate() - 1);
       } else {
         break;
@@ -81,17 +100,23 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={[{ flex: 1, paddingTop: 64, paddingHorizontal: 24 }, { backgroundColor: theme.background }]}>
-      {/* Header */}
       <View style={{ marginBottom: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <View style={{ backgroundColor: theme.primaryLight, padding: 8, borderRadius: 12 }}>
               <LayoutDashboard size={21} color={theme.primary} />
             </View>
-            <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '800', marginLeft: 12, letterSpacing: 2, textTransform: 'uppercase' }}>OVERVIEW</Text>
-          </View>
-          <Text style={{ color: theme.text, fontSize: 32, fontWeight: 'bold' }}>Hey, {userName}! 👋</Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '800', marginLeft: 12, letterSpacing: 2, textTransform: 'uppercase' }}>
+            {isEth ? 'አጠቃላይ እይታ' : 'OVERVIEW'}
+          </Text>
         </View>
+        <Text style={{ color: theme.text, fontSize: 32, fontWeight: 'bold' }}>Hey, {userName}! 👋</Text>
+        {isEth && (
+          <Text style={{ color: theme.primary, fontSize: 14, fontWeight: '700', marginTop: 4 }}>
+            {formatDate(new Date(), true)}
+          </Text>
+        )}
+      </View>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <TouchableOpacity 
             onPress={() => { popHaptic(); setSearchVisible(true); }} 
@@ -127,9 +152,9 @@ export default function DashboardScreen({ navigation }) {
             <Text style={{ color: theme.text, fontSize: 48, fontWeight: '900' }}>
               {(globalProgress * 100).toFixed(0)}<Text style={{ color: theme.primary, fontSize: 24 }}>%</Text>
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: '500' }}>{streak} Day Streak</Text>
-              <View style={{ backgroundColor: theme.success, width: 4, height: 4, borderRadius: 2, marginLeft: 6 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+              <Flame size={14} color="#f97316" fill="#f97316" />
+              <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '700', marginLeft: 6 }}>{streak} Day Streak</Text>
             </View>
           </View>
           
@@ -139,7 +164,6 @@ export default function DashboardScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Weekly View */}
       <View style={{ marginBottom: 32 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ color: theme.text, fontSize: 18, fontWeight: '600' }}>Weekly Journey</Text>
@@ -152,6 +176,15 @@ export default function DashboardScreen({ navigation }) {
             const dateStr = format(date, 'yyyy-MM-dd');
             const progress = getDayProgress(dateStr);
             const isToday = isSameDay(date, new Date());
+            
+            let displayDay = format(date, 'd');
+            let displayLabel = format(date, 'EEE');
+            
+            if (isEth) {
+              const eth = toEthiopian(date);
+              displayDay = eth.day;
+              displayLabel = eth.dayName;
+            }
 
             return (
               <TouchableOpacity
@@ -169,11 +202,11 @@ export default function DashboardScreen({ navigation }) {
                   borderColor: isToday ? theme.primary : theme.border,
                 }}
               >
-                <Text style={{ color: isToday ? theme.primary : theme.textSecondary, fontSize: 12, marginBottom: 8, textTransform: 'uppercase', fontWeight: '700' }}>
-                  {format(date, 'EEE')}
+                <Text style={{ color: isToday ? theme.primary : theme.textSecondary, fontSize: 10, marginBottom: 8, textTransform: 'uppercase', fontWeight: '700' }}>
+                  {isEth ? displayLabel : displayLabel.slice(0, 3)}
                 </Text>
                 <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold', marginBottom: 4 }}>
-                  {format(date, 'd')}
+                  {displayDay}
                 </Text>
                 <Text style={{ color: theme.textSecondary, fontSize: 8, fontWeight: '700', marginBottom: 6 }}>
                   {Math.round(progress * 100)}%
@@ -187,7 +220,6 @@ export default function DashboardScreen({ navigation }) {
         </ScrollView>
       </View>
 
-      {/* Today's Quick Action */}
       <TouchableOpacity
         onPress={() => { popHaptic(); navigation.navigate('DayDetail', { date: format(new Date(), 'yyyy-MM-dd') }); }}
         style={{
@@ -204,6 +236,44 @@ export default function DashboardScreen({ navigation }) {
         <Plus size={24} color="white" />
         <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18, marginLeft: 8 }}>Today's Focus</Text>
       </TouchableOpacity>
+
+      <Modal visible={showGreeting} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+          <View style={{ 
+            backgroundColor: theme.card, borderRadius: 32, padding: 32, width: '100%', 
+            alignItems: 'center', borderWidth: 1, borderColor: theme.border,
+            shadowColor: theme.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20
+          }}>
+            <View style={{ backgroundColor: theme.primaryLight, padding: 20, borderRadius: 24, marginBottom: 24 }}>
+              <Sparkles size={48} color={theme.primary} />
+            </View>
+            
+            <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '800', letterSpacing: 3, marginBottom: 16 }}>
+              {isEth ? 'እንደምን አደሩ' : 'GOOD MORNING'}
+            </Text>
+            
+            <Text style={{ color: theme.text, fontSize: 32, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>
+              {isEth ? `${userName}!` : `Hey ${userName}!`} 👋
+            </Text>
+            
+            <Text style={{ color: theme.textSecondary, fontSize: 15, textAlign: 'center', marginBottom: 32, lineHeight: 22 }}>
+              {isEth 
+                ? 'መልካም እና ስኬታማ ቀን ይሁንልዎት! ዛሬም ምርጥ ስራዎችን ለመስራት ዝግጁ ነዎት?' 
+                : 'May your day be filled with productivity and success. Ready to crush your goals today?'}
+            </Text>
+
+            <TouchableOpacity 
+              onPress={() => { popHaptic(); setShowGreeting(false); }}
+              style={{ 
+                backgroundColor: theme.primary, paddingVertical: 18, paddingHorizontal: 40, borderRadius: 20,
+                shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>LETS START</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <SettingsModal visible={isSettingsVisible} onClose={() => setSettingsVisible(false)} />
 

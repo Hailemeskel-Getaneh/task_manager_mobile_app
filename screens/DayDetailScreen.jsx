@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { ChevronLeft, Plus, Clock, Trash2, AlertTriangle, Bell, Briefcase, User, Heart, BookOpen } from 'lucide-react-native';
 import { format, parseISO } from 'date-fns';
 import { loadAllData, saveAllData } from '../utils/storage';
 import { scheduleAlarm, cancelAlarm, popHaptic } from '../utils/notifications';
 import { useSettings } from '../utils/SettingsContext';
 import { lightTheme, darkTheme } from '../utils/theme';
+import { toEthiopian, formatDate } from '../utils/ethiopianCalendar';
 import TaskEditorModal from '../components/TaskEditorModal';
+
+const CategoryIcon = ({ category, size = 12, color = 'white' }) => {
+  switch (category) {
+    case 'Work':     return <Briefcase size={size} color={color} />;
+    case 'Personal': return <User size={size} color={color} />;
+    case 'Health':   return <Heart size={size} color={color} />;
+    case 'Study':    return <BookOpen size={size} color={color} />;
+    default:         return null;
+  }
+};
 
 // Convert 24h "HH:MM" to "h:MM AM/PM"
 const to12h = (timeStr) => {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':').map(Number);
+  if (!timeStr || !timeStr.includes(':')) return '';
+  const parts = timeStr.split(':');
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return '';
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
@@ -31,43 +45,67 @@ const PriorityBadge = ({ priority, isDark }) => {
   );
 };
 
+const formatText = (text, baseStyle) => {
+  if (!text) return null;
+  // Bold: **text**
+  // Italic: _text_
+  const parts = text.split(/(\*\*.*?\*\*|_.*?_)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <Text key={i} style={[baseStyle, { fontWeight: 'bold' }]}>{part.slice(2, -2)}</Text>;
+    }
+    if (part.startsWith('_') && part.endsWith('_')) {
+      return <Text key={i} style={[baseStyle, { fontStyle: 'italic' }]}>{part.slice(1, -1)}</Text>;
+    }
+    return <Text key={i} style={baseStyle}>{part}</Text>;
+  });
+};
+
 const RenderNotes = ({ content, font, theme }) => {
   if (!content?.trim()) return null;
   const lines = content.split('\n').filter(l => l.trim());
+  const selectedFont = font === 'Georgia' || font === 'Serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : font === 'Courier' || font === 'Mono' ? (Platform.OS === 'ios' ? 'Courier' : 'monospace') : undefined;
+
   return (
     <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(128,128,128,0.2)' }}>
       {lines.map((line, i) => {
-        const isTable = line.trim().startsWith('|');
+        const isTable = line.trim().startsWith('|') && line.includes('|', 1);
         const isList = line.trim().startsWith('-');
+
+        if (isTable) {
+          const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+          if (cells.length === 0 || line.includes('---')) return null; // Skip separator lines
+          return (
+            <View key={i} style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: 'rgba(128,128,128,0.1)', backgroundColor: 'rgba(128,128,128,0.05)' }}>
+              {cells.map((cell, j) => (
+                <View key={j} style={{ flex: 1, padding: 6, borderRightWidth: j < cells.length - 1 ? 1 : 0, borderRightColor: 'rgba(128,128,128,0.1)' }}>
+                  <Text style={{ fontSize: 10, color: theme.textSecondary, fontFamily: selectedFont }}>
+                    {formatText(cell.trim(), { fontSize: 10, color: theme.textSecondary, fontFamily: selectedFont })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          );
+        }
+
         return (
           <Text
             key={i}
             style={{
-              fontFamily: font === 'Georgia' ? 'Georgia' : font === 'Courier' ? 'monospace' : undefined,
-              fontSize: isTable ? 10 : 13,
+              fontFamily: selectedFont,
+              fontSize: 13,
               color: theme.textSecondary,
-              backgroundColor: isTable ? 'rgba(128,128,128,0.1)' : 'transparent',
-              paddingHorizontal: isTable ? 4 : 0,
-              marginLeft: isList ? 8 : 0,
-              marginBottom: 2,
+              marginLeft: isList ? 12 : 0,
+              marginBottom: 4,
             }}
           >
-            {isList ? `• ${line.slice(1).trim()}` : line}
+            {isList ? <Text style={{ fontWeight: 'bold' }}>• </Text> : null}
+            {formatText(isList ? line.trim().slice(1).trim() : line, { fontFamily: selectedFont, fontSize: 13, color: theme.textSecondary })}
           </Text>
         );
       })}
     </View>
   );
-};
-
-const CategoryIcon = ({ category, size = 12, color = 'white' }) => {
-  switch (category) {
-    case 'Work':     return <Briefcase size={size} color={color} />;
-    case 'Personal': return <User size={size} color={color} />;
-    case 'Health':   return <Heart size={size} color={color} />;
-    case 'Study':    return <BookOpen size={size} color={color} />;
-    default:         return null;
-  }
 };
 
 export default function DayDetailScreen({ route, navigation }) {
@@ -76,9 +114,10 @@ export default function DayDetailScreen({ route, navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 
-  const { activeTheme } = useSettings();
+  const { activeTheme, calendarMode } = useSettings();
   const theme = activeTheme === 'dark' ? darkTheme : lightTheme;
   const isDark = activeTheme === 'dark';
+  const isEth = calendarMode === 'Ethiopian';
 
   useEffect(() => {
     refreshData();
@@ -165,7 +204,7 @@ export default function DayDetailScreen({ route, navigation }) {
     setModalVisible(true);
   };
 
-  // Task card colors — always dark bg since task cards are themed via item.color
+  // Task card colors
   const cardTextColor = 'white';
   const cardSubColor = 'rgba(255,255,255,0.6)';
   const cardBg = 'rgba(0,0,0,0.18)';
@@ -181,12 +220,12 @@ export default function DayDetailScreen({ route, navigation }) {
           <ChevronLeft size={20} color={theme.text} />
         </TouchableOpacity>
 
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{ color: theme.textSecondary, fontSize: 10, fontWeight: '900', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 2 }}>
-            {format(parseISO(date), 'EEEE')}
+        <View style={{ flex: 1, marginLeft: 16 }}>
+          <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
+            {isEth ? `${toEthiopian(parseISO(date)).monthName} ${toEthiopian(parseISO(date)).year}` : format(parseISO(date), 'MMMM yyyy')}
           </Text>
-          <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>
-            {format(parseISO(date), 'MMMM d, yyyy')}
+          <Text style={{ color: theme.text, fontSize: 24, fontWeight: 'bold' }}>
+            {formatDate(parseISO(date), isEth)}
           </Text>
         </View>
 
@@ -198,7 +237,7 @@ export default function DayDetailScreen({ route, navigation }) {
         <View style={{
           backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border,
           borderRadius: 24, padding: 20,
-          shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.06, shadowRadius: 8, elevation: 4,
+          elevation: 4,
         }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14 }}>
             <View>
@@ -229,7 +268,6 @@ export default function DayDetailScreen({ route, navigation }) {
           <View style={{ alignItems: 'center', marginTop: 80 }}>
             <AlertTriangle size={52} color={theme.border} />
             <Text style={{ color: theme.textSecondary, fontSize: 16, marginTop: 16, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2 }}>No Tasks Yet</Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 6, opacity: 0.7 }}>Tap + to plan your day</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -240,53 +278,28 @@ export default function DayDetailScreen({ route, navigation }) {
               style={{
                 backgroundColor: item.color || (isDark ? '#1e293b' : '#334155'),
                 borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                 padding: 20,
                 borderRadius: 24,
-                shadowColor: item.color || '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
                 elevation: 5,
               }}
             >
-              {/* Title Row */}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text
-                    style={{
-                      color: cardTextColor,
-                      fontSize: 17,
-                      fontWeight: '700',
-                      marginBottom: 8,
-                      fontFamily: item.font === 'Georgia' ? 'Georgia' : item.font === 'Courier' ? 'monospace' : undefined,
-                    }}
-                    numberOfLines={2}
-                  >
+                  <Text style={{ color: cardTextColor, fontSize: 17, fontWeight: '700', marginBottom: 8 }} numberOfLines={2}>
                     {item.title}
                   </Text>
-
-                  {/* Time Range + Priority row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                    {/* Start → End time badge */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: cardBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
                       <Clock size={11} color={cardSubColor} />
                       <Text style={{ color: cardSubColor, fontSize: 11, marginLeft: 5, fontWeight: '700' }}>
                         {to12h(item.startTime)}
-                        {item.endTime ? ` → ${to12h(item.endTime)}` : ''}
+                        {item.endTime ? ` - ${to12h(item.endTime)}` : ''}
                       </Text>
                     </View>
-
-                    <PriorityBadge priority={item.priority} isDark={true} />
-
-                    {/* Alarm indicator */}
-                    {item.alertEnabled && (
-                      <View style={{ backgroundColor: 'rgba(56,189,248,0.2)', padding: 4, borderRadius: 6 }}>
-                        <Bell size={10} color="#38bdf8" />
-                      </View>
-                    )}
-
-                    {/* Category indicator */}
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                        <Text style={{ color: 'white', fontSize: 9, fontWeight: 'bold' }}>{item.priority}</Text>
+                    </View>
                     {item.category && (
                       <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
                         <CategoryIcon category={item.category} size={10} color={cardSubColor} />
@@ -295,59 +308,29 @@ export default function DayDetailScreen({ route, navigation }) {
                     )}
                   </View>
                 </View>
-
-                {/* Delete button */}
-                <TouchableOpacity
-                  onPress={() => deleteTask(item)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  style={{ padding: 8, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 10 }}
-                >
+                <TouchableOpacity onPress={() => deleteTask(item)} style={{ padding: 8, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 10 }}>
                   <Trash2 size={14} color="rgba(255,255,255,0.6)" />
                 </TouchableOpacity>
               </View>
-
-              {/* Notes */}
               <RenderNotes content={item.notes} font={item.font} theme={{ textSecondary: cardSubColor }} />
-
-              {/* Progress Bar */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
                 <View style={{ flex: 1, marginRight: 10 }}>
                   <View style={{ height: 5, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 99, overflow: 'hidden' }}>
                     <View style={{ height: '100%', width: `${(item.progress || 0) * 100}%`, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 99 }} />
                   </View>
                 </View>
-                <Text style={{ color: cardSubColor, fontSize: 11, fontWeight: '900', minWidth: 36, textAlign: 'right' }}>
-                  {((item.progress || 0) * 100).toFixed(0)}%
-                </Text>
+                <Text style={{ color: cardSubColor, fontSize: 11, fontWeight: '900' }}>{((item.progress || 0) * 100).toFixed(0)}%</Text>
               </View>
-
-              {/* Tap to edit hint */}
-              <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, marginTop: 10, textAlign: 'right', textTransform: 'uppercase', letterSpacing: 1 }}>
-                Tap to edit
-              </Text>
             </TouchableOpacity>
           </View>
         )}
       />
 
-      {/* FAB */}
       <TouchableOpacity
         onPress={openNew}
         style={{
-          position: 'absolute',
-          bottom: 36,
-          right: 28,
-          backgroundColor: theme.primary,
-          width: 62,
-          height: 62,
-          borderRadius: 20,
-          justifyContent: 'center',
-          alignItems: 'center',
-          shadowColor: theme.primary,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.5,
-          shadowRadius: 12,
-          elevation: 8,
+          position: 'absolute', bottom: 36, right: 28, backgroundColor: theme.primary,
+          width: 62, height: 62, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 8,
         }}
       >
         <Plus size={28} color="white" />

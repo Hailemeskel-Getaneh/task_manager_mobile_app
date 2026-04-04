@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { useSettings } from '../utils/SettingsContext';
 import { popHaptic } from '../utils/notifications';
+import { formatDate } from '../utils/ethiopianCalendar';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,8 +22,9 @@ const CategoryIcon = ({ category, size = 12, color = 'white' }) => {
 export default function SearchModal({ visible, onClose, data, onNavigate }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
-  const { activeTheme } = useSettings();
+  const { activeTheme, calendarMode } = useSettings();
   const theme = activeTheme === 'dark' ? darkTheme : lightTheme;
+  const isEth = calendarMode === 'Ethiopian';
 
   useEffect(() => {
     if (query.trim().length > 1) {
@@ -101,7 +103,7 @@ export default function SearchModal({ visible, onClose, data, onNavigate }) {
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Calendar size={12} color={theme.textSecondary} />
                     <Text style={[styles.resultDate, { color: theme.textSecondary }]}>
-                      {format(parseISO(item.dateStr), 'MMM d, yyyy')}
+                      {formatDate(parseISO(item.dateStr), isEth)}
                     </Text>
                   </View>
                 </View>

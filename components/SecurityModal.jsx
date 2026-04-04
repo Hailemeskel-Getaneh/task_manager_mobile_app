@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, StyleSheet, Dimensions, Vibration 
 import { Lock, Delete, ArrowRight, ShieldCheck, ShieldAlert } from 'lucide-react-native';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { useSettings } from '../utils/SettingsContext';
+import { popHaptic } from '../utils/notifications';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,7 @@ export default function SecurityModal({ visible, onUnlock, mode = 'unlock' }) {
   }, [visible]);
 
   const handlePress = (num) => {
+    popHaptic();
     if (input.length < 4) {
       const nextInput = input + num;
       setInput(nextInput);
@@ -41,6 +43,7 @@ export default function SecurityModal({ visible, onUnlock, mode = 'unlock' }) {
   };
 
   const handleDelete = () => {
+    popHaptic();
     setInput(input.slice(0, -1));
     setError(false);
   };

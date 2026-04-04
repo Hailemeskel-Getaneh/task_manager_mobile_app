@@ -1,108 +1,99 @@
-/**
- * Alarm system using React Native's built-in Alert + Vibration.
- * Replaces expo-notifications/expo-av for 100% stability in Expo Go.
- */
-import { Alert, Vibration } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
-// Store active timers: Map<AlarmID, TimerID>
-const activeTimers = new Map();
-
-/**
- * Stop any active vibration and clear specific timer
- */
-export const cancelAlarm = (alarmId) => {
-  if (activeTimers.has(alarmId)) {
-    clearTimeout(activeTimers.get(alarmId));
-    activeTimers.delete(alarmId);
-  }
-  // Generic cancel stops current vibration
-  Vibration.cancel();
-};
+// Set up foreground notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 /**
- * Clear all scheduled alarms
+ * Request notification permissions and set up Android channels.
  */
-export const cancelAllAlarms = () => {
-  activeTimers.forEach((timerId) => clearTimeout(timerId));
-  activeTimers.clear();
-  Vibration.cancel();
-};
-
-/**
- * Schedule an alarm for a task
- * @param {string} id - Task ID
- * @param {string} title - Task Title
- * @param {string} time - HH:mm
- * @param {string} dateStr - yyyy-MM-dd
- * @param {('Start'|'End')} type - Purpose
- */
-export const scheduleAlarm = (id, title, time, dateStr, type = 'Start') => {
-  const alarmId = `alarm_${id}_${type}`;
-  cancelAlarm(alarmId);
-
-  const [hours, minutes] = time.split(':').map(Number);
-  const triggerDate = new Date(dateStr);
-  triggerDate.setHours(hours, minutes, 0, 0);
-
-  const now = new Date();
-  const msUntilAlarm = triggerDate.getTime() - now.getTime();
-
-  if (msUntilAlarm <= 0) return null;
-
-  const timerId = setTimeout(() => {
-    triggerAlert(id, title, type, time, dateStr);
-  }, msUntilAlarm);
-
-  activeTimers.set(alarmId, timerId);
-  console.log(`[Alarm] Scheduled ${type} for "${title}" at ${time}`);
-  return timerId;
-};
-
-/**
- * Fire the actual notification UI and Vibration
- */
-const triggerAlert = (id, title, type, time, dateStr) => {
-  const isEnd = type === 'End';
-  const pattern = isEnd ? [0, 800, 400, 800, 400, 1000] : [0, 500, 200, 500];
+export const initNotifications = async () => {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
   
-  Vibration.vibrate(pattern, true);
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
 
-  Alert.alert(
-    isEnd ? '⏰ TIME IS UP!' : '🚀 TASK STARTING!',
-    isEnd 
-      ? `Your time for "${title}" has concluded.` 
-      : `Get ready to focus on: ${title}`,
-    [
-      { 
-        text: 'Snooze 5m', 
-        onPress: () => {
-          Vibration.cancel();
-          const snoozeTime = getSnoozeTime(time, 5);
-          scheduleAlarm(id, title, snoozeTime, dateStr, type);
-        }
-      },
-      { 
-        text: 'Finish', 
-        style: 'default',
-        onPress: () => Vibration.cancel()
-      },
-    ],
-    { cancelable: false }
-  );
-};
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'Default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+      enableVibration: true,
+    });
+  }
 
-const getSnoozeTime = (timeStr, minutesToAdd) => {
-  const [h, m] = timeStr.split(':').map(Number);
-  const date = new Date();
-  date.setHours(h, m + minutesToAdd, 0, 0);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return finalStatus === 'granted';
 };
 
 /**
- * Tiny 15ms vibration for "Haptic" button feel.
+ * Schedule a local notification using official Expo APIs.
  */
-export const popHaptic = () => {
-  Vibration.vibrate(15);
+export const scheduleAlarm = async (id, title, time, dateStr, type) => {
+  const identifier = `alarm_${id}_${type}`;
+  await cancelAlarm(identifier);
+
+  const [h, m] = time.split(':').map(Number);
+  const [yr, mo, dy] = dateStr.split('-').map(Number);
+  
+  const triggerDate = new Date(yr, mo - 1, dy, h, m, 0, 0);
+  const diff = triggerDate.getTime() - Date.now();
+
+  if (diff <= 0) return;
+
+  const isEnd = type === 'End';
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: isEnd ? '⏰ TIME IS UP!' : '🚀 TASK STARTING!',
+        body: `Goal: ${title}`,
+        data: { id, type },
+        vibrationPattern: isEnd ? [0, 800, 400, 800] : [0, 500, 200, 500],
+      },
+      trigger: triggerDate,
+    });
+    console.log(`Scheduled: ${identifier} for ${triggerDate}`);
+  } catch (e) {
+    console.error('Failed to schedule notification:', e);
+  }
 };
 
-export const requestPermissions = async () => true;
+/**
+ * Cancel a scheduled notification.
+ */
+export const cancelAlarm = async (identifierOrId) => {
+  try {
+    // If it's a raw task ID, we may need to cancel both Start and End or handle the full identifier
+    const id = identifierOrId.startsWith('alarm_') ? identifierOrId : `alarm_${identifierOrId}`;
+    await Notifications.cancelScheduledNotificationAsync(id);
+  } catch (e) {
+    console.error('Failed to cancel notification:', e);
+  }
+};
+
+export const cancelAllAlarms = async () => {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+};
+
+export const popHaptic = () => {
+  // Simple UI feedback vibration
+  // Note: For advanced haptics, expo-haptics is recommended
+  import('react-native').then(({ Vibration }) => {
+    Vibration.vibrate(15);
+  });
+};
+
+export const requestPermissions = initNotifications;

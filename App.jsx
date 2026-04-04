@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DashboardScreen from './screens/DashboardScreen';
 import DayDetailScreen from './screens/DayDetailScreen';
-import { requestPermissions } from './utils/notifications';
+import { requestPermissions, initNotifications } from './utils/notifications';
 import { SettingsProvider, useSettings } from './utils/SettingsContext';
 import SecurityModal from './components/SecurityModal';
 
@@ -37,6 +37,10 @@ function AppNavigation() {
   const { activeTheme, isSecurityEnabled } = useSettings();
   const [isUnlocked, setIsUnlocked] = React.useState(false);
   
+  useLayoutEffect(() => {
+    initNotifications();
+  }, []);
+
   useEffect(() => {
     requestPermissions();
   }, []);

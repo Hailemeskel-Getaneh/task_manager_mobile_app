@@ -14,13 +14,13 @@ export default function ProgressSlider({ value, onChange, theme }) {
     
     let newValue = (touchX / sliderWidth) * 100;
     newValue = Math.max(0, Math.min(100, Math.round(newValue)));
-    onChange(newValue);
+    if (onChange) onChange(newValue);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.labelRow}>
-        <Text style={styles.label}>PROGRESS STATUS</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>PROGRESS STATUS</Text>
         <Text style={[styles.valueText, { color: theme.primary }]}>{value}%</Text>
       </View>
 
@@ -34,7 +34,7 @@ export default function ProgressSlider({ value, onChange, theme }) {
         style={styles.sliderTrack}
       >
         {/* Background Bar */}
-        <View style={[styles.inactiveTrack, { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
+        <View style={[styles.inactiveTrack, { backgroundColor: theme.border }]} />
         
         {/* Active Fill */}
         <View 
@@ -54,8 +54,8 @@ export default function ProgressSlider({ value, onChange, theme }) {
       </View>
 
       <View style={styles.hintRow}>
-        <Text style={styles.hintText}>Drag to update</Text>
-        <Text style={styles.hintText}>Target: 100%</Text>
+        <Text style={[styles.hintText, { color: theme.textSecondary + '80' }]}>Drag to update</Text>
+        <Text style={[styles.hintText, { color: theme.textSecondary + '80' }]}>Target: 100%</Text>
       </View>
     </View>
   );
@@ -73,7 +73,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   label: {
-    color: 'rgba(255,255,255,0.5)',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -119,7 +118,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   hintText: {
-    color: 'rgba(255,255,255,0.3)',
     fontSize: 9,
     fontWeight: 'bold',
     textTransform: 'uppercase',

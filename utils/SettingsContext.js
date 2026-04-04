@@ -10,6 +10,7 @@ export const SettingsProvider = ({ children }) => {
   const [userName, setUserName] = useState('User');
   const [isSecurityEnabled, setSecurityEnabled] = useState(false);
   const [passcode, setPasscode] = useState('');
+  const [calendarMode, setCalendarMode] = useState('Gregorian');
 
   useEffect(() => {
     loadSettings();
@@ -17,18 +18,20 @@ export const SettingsProvider = ({ children }) => {
 
   const loadSettings = async () => {
     try {
-      const keys = ['@theme_mode', '@user_name', '@is_security', '@passcode'];
+      const keys = ['@theme_mode', '@user_name', '@is_security', '@passcode', '@calendar_mode'];
       const values = await AsyncStorage.multiGet(keys);
       
       const theme = values.find(v => v[0] === '@theme_mode')?.[1];
       const name = values.find(v => v[0] === '@user_name')?.[1];
       const security = values.find(v => v[0] === '@is_security')?.[1];
       const code = values.find(v => v[0] === '@passcode')?.[1];
+      const calendar = values.find(v => v[0] === '@calendar_mode')?.[1];
 
       if (theme) setThemeMode(theme);
       if (name) setUserName(name);
       if (security) setSecurityEnabled(security === 'true');
       if (code) setPasscode(code);
+      if (calendar) setCalendarMode(calendar);
     } catch (e) {
       console.error(e);
     }
@@ -54,6 +57,11 @@ export const SettingsProvider = ({ children }) => {
     await AsyncStorage.setItem('@passcode', code);
   };
 
+  const changeCalendarMode = async (mode) => {
+    setCalendarMode(mode);
+    await AsyncStorage.setItem('@calendar_mode', mode);
+  };
+
   // Determine actual active theme based on setting
   const activeTheme = themeMode === 'system' ? systemTheme : themeMode;
 
@@ -62,7 +70,8 @@ export const SettingsProvider = ({ children }) => {
       themeMode, changeTheme, activeTheme, 
       userName, changeName, 
       isSecurityEnabled, changeSecurity, 
-      passcode, changePasscode 
+      passcode, changePasscode,
+      calendarMode, changeCalendarMode
     }}>
       {children}
     </SettingsContext.Provider>
