@@ -92,7 +92,7 @@ export default function SettingsModal({ visible, onClose }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600' }}>Appearance</Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{themeMode.charAt(0).toUpperCase() + themeMode.slice(1)} Mode</Text>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{themeMode ? themeMode.charAt(0).toUpperCase() + themeMode.slice(1) : ''} Mode</Text>
                   </View>
                   <ChevronRight size={20} color={theme.textSecondary} />
                 </TouchableOpacity>

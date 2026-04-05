@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, Platform, Vibration } from 'react-native';
-import { ChevronLeft, Plus, Clock, Trash2, AlertTriangle, Bell, Briefcase, User, Heart, BookOpen } from 'lucide-react-native';
+import { ChevronLeft, Plus, Clock, Trash2, AlertTriangle, Bell, BellRing, Briefcase, User, Heart, BookOpen } from 'lucide-react-native';
 import { format, parseISO } from 'date-fns';
 import { loadAllData, saveAllData } from '../utils/storage';
 import { scheduleAlarm, cancelAlarm, popHaptic } from '../utils/notifications';
@@ -297,6 +297,20 @@ export default function DayDetailScreen({ route, navigation }) {
                         {item.endTime ? ` - ${to12h(item.endTime)}` : ''}
                       </Text>
                     </View>
+                    {(item.alertEnabled || item.endAlertEnabled) && (
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {item.alertEnabled && (
+                          <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', padding: 6, borderRadius: 8 }}>
+                            <Bell size={12} color="white" />
+                          </View>
+                        )}
+                        {item.endAlertEnabled && (
+                          <View style={{ backgroundColor: 'rgba(239,68,68,0.2)', padding: 6, borderRadius: 8 }}>
+                            <BellRing size={12} color="#fca5a5" />
+                          </View>
+                        )}
+                      </View>
+                    )}
                     <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
                         <Text style={{ color: 'white', fontSize: 9, fontWeight: 'bold' }}>{item.priority}</Text>
                     </View>
